@@ -78,10 +78,12 @@ class AppTestActivity : AppCompatActivity() {
                     } catch (_: IOException) {
                     }
                 }
+                val intentArrayOfCameraPictures = arrayOf(takePictureByCameraIntent)
+
                 val contentSelectionIntent = Intent(Intent.ACTION_GET_CONTENT)
                 contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE)
                 contentSelectionIntent.type = "image/*"
-                val intentArrayOfCameraPictures = arrayOf(takePictureByCameraIntent)
+
                 val chooserIntent = Intent(Intent.ACTION_CHOOSER)
                 chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent)
                 chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArrayOfCameraPictures)
