@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.PersistableBundle
 import android.provider.MediaStore
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -23,13 +24,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 
-class AppTest : AppCompatActivity() {
+class AppTestActivity : AppCompatActivity() {
 
 
-    lateinit var webView: WebView
+    private lateinit var webView: WebView
 
     var imagesUri: ValueCallback<Array<Uri>>? = null
     lateinit var startForResult: ActivityResultLauncher<Intent>
+
+    private val webViewStateKey = "webViewState"
+    private var webViewState: Bundle? = null
+
 
     private val binding by lazy {
         ActivityAppTestBinding.inflate(layoutInflater)
@@ -49,6 +54,13 @@ class AppTest : AppCompatActivity() {
         webView.webViewClient = MyWebViewClient()
 
 
+        if (savedInstanceState != null) {
+            webViewState = savedInstanceState.getBundle(webViewStateKey)
+            webViewState?.let { webView.restoreState(it) }
+        } else {
+            webView.loadUrl("http://tsapptest.xyz/")
+        }
+
         //то что новое
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -59,27 +71,29 @@ class AppTest : AppCompatActivity() {
             ): Boolean {
 
                 imagesUri = filePathCallback
-                val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                if (takePictureIntent.resolveActivity(packageManager) != null) {
+                val takePictureByCameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                if (takePictureByCameraIntent.resolveActivity(packageManager) != null) {
                     try {
-                        takePictureIntent.putExtra("PhotoPath", createImageFile())
+                        takePictureByCameraIntent.putExtra("PhotoPath", createImageFile())
                     } catch (_: IOException) {
                     }
                 }
+                val intentArrayOfCameraPictures = arrayOf(takePictureByCameraIntent)
+
                 val contentSelectionIntent = Intent(Intent.ACTION_GET_CONTENT)
                 contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE)
                 contentSelectionIntent.type = "image/*"
-                val intentArray = arrayOf(takePictureIntent)
-                val bibitpdas = Intent(Intent.ACTION_CHOOSER)
-                bibitpdas.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent)
-                bibitpdas.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray)
-                startForResult.launch(bibitpdas)
+
+                val chooserIntent = Intent(Intent.ACTION_CHOOSER)
+                chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent)
+                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArrayOfCameraPictures)
+
+                startForResult.launch(chooserIntent)
 
                 return true
             }
         }
 
-        webView.loadUrl(" http://tsapptest.xyz/")
 
         startForResult =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -88,27 +102,49 @@ class AppTest : AppCompatActivity() {
                     return@registerForActivityResult
                 }
                 if (result.data?.data?.toString()?.startsWith("content://") == true) {
-                    imagesUri?.onReceiveValue(arrayOf(Uri.parse(result.data?.dataString)))
+                    val image = arrayOf(Uri.parse(result.data?.dataString))
+                    imagesUri?.onReceiveValue(image)
                 } else {
-                    val camasdphotasdas = result.data?.extras?.get("data") as? Bitmap
-                    camasdphotasdas?.let {
+                    val imageFromCamera = result.data?.extras?.get("data") as? Bitmap
+                    imageFromCamera?.let {
                         val bytes = ByteArrayOutputStream()
                         it.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
-                        val asdfjkljasdf = MediaStore.Images.Media.insertImage(
+                        val compressedImage = MediaStore.Images.Media.insertImage(
                             contentResolver,
                             it,
                             "a",
                             "a"
                         )
-                        imagesUri?.onReceiveValue(arrayOf(Uri.parse(asdfjkljasdf)))
+                        imagesUri?.onReceiveValue(arrayOf(Uri.parse(compressedImage)))
                         imagesUri = null
                     }
                 }
             }
 
+
         //конец
 
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        // Сохранение состояния WebView
+        webViewState = Bundle()
+        webView.saveState(webViewState!!)
+        outState.putBundle(webViewStateKey, webViewState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+
+        // Восстановление состояния WebView
+        webViewState = savedInstanceState.getBundle(webViewStateKey)
+        webViewState?.let { webView.restoreState(it) }
+    }
+
+
+
 
     private fun createImageFile(): File {
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
@@ -123,7 +159,7 @@ class AppTest : AppCompatActivity() {
 
     companion object {
         fun newIntent(context: Context): Intent {
-            return Intent(context, AppTest::class.java)
+            return Intent(context, AppTestActivity::class.java)
         }
     }
 
