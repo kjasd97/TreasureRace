@@ -115,8 +115,10 @@ class AppTestActivity : AppCompatActivity() {
                             "a",
                             "a"
                         )
-                        imagesUri?.onReceiveValue(arrayOf(Uri.parse(compressedImage)))
-                        imagesUri = null
+                        if(compressedImage!=null) {
+                            imagesUri?.onReceiveValue(arrayOf(Uri.parse(compressedImage)))
+                            imagesUri = null
+                        }
                     }
                 }
             }
